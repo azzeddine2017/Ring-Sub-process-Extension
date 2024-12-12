@@ -17,7 +17,7 @@ A powerful subprocess management extension for the Ring programming language tha
 buildvc_x64.bat
 ```
 
-2. The build process will create `ring_subprocess.dll` which should be placed in Ring's extensions directory.
+2. The build process will create `ring_subprocess.dll` which should be placed in Ring's bin directory.
 
 ## Usage
 
