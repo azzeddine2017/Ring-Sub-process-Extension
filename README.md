@@ -12,12 +12,14 @@ A powerful subprocess management extension for the Ring programming language tha
 
 ## Installation
 
-1. Build the extension using the provided `buildvc_x64.bat` script:
+- clone `https://github.com/azzeddine2017/Ring-Sub-process-Extension.git` in folder ring/extensions
+
+### Build Steps
+
+- Build the extension using the provided `buildvc_x64.bat` script:
 ```batch
 buildvc_x64.bat
 ```
-
-2. The build process will create `ring_subprocess.dll` which should be placed in Ring's bin directory.
 
 ## Usage
 
@@ -76,16 +78,6 @@ The extension uses `_popen` for process creation and management, which provides 
 - Built-in output capture functionality
 - Avoids conflicts with Ring's existing system functions
 
-## Building from Source
-
-### Prerequisites
-- Microsoft Visual C++ compiler
-- Ring programming language installed
-
-### Build Steps
-1. Navigate to the extension directory
-2. Run `buildvc_x64.bat`
-3. Copy the generated DLL to Ring's extensions directory
 
 ## License
 
