@@ -41,4 +41,34 @@ Class ProcessManager {
             return false
         }
         return true
+    
+    func setStdin data
+        if not isnull(pObject) {
+            return subprocess_setstdin(pObject, data)
+        }
+        return 0
+    
+    func getStderr
+        if not isnull(pObject) {
+            return subprocess_geterror(pObject)
+        }
+        return ""
+    
+    func getExitCode
+        if not isnull(pObject) {
+            return subprocess_getexitcode(pObject)
+        }
+        return -1
+    
+    func getPid
+        if not isnull(pObject) {
+            return subprocess_getpid(pObject)
+        }
+        return -1
+    
+    func readOutputAsync
+        if not isnull(pObject) {
+            return subprocess_readasync(pObject)
+        }
+        return ""
 }
