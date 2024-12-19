@@ -4,6 +4,12 @@ A powerful subprocess management extension for the Ring programming language tha
 
 ## Features
 
+- Execute commands synchronously and asynchronously
+- Read command output in both synchronous and asynchronous modes
+- Send input to processes
+- Get process information (PID, exit code)
+- Handle process errors and stderr
+- Stream output in real-time
 - Create and manage system processes
 - Capture process output
 - Wait for process completion
@@ -34,15 +40,47 @@ proc.waitForComplete()
 ? proc.readOutput()
 proc.kill()
 ```
+### Advanced Example
 
-### API Reference
+```ring
+load "subprocess.ring"
 
-The extension provides a `ProcessManager` class with the following methods:
+# Create a new process manager
+proc = new ProcessManager()
+
+# Execute a command synchronously
+proc.runCommand("command")
+proc.waitForComplete()
+output = proc.readOutput()
+
+# Execute a command asynchronously with real-time output
+proc.runCommandAsync("command")
+while true {
+    output = proc.readOutputAsync()
+    if len(output) = 0 { exit }
+    ? output
+}
+
+# Get process information
+pid = proc.getPid()
+exitCode = proc.getExitCode()
+error = proc.getStderr()
+
+# Clean up
+proc.kill()
+```
+
 
 #### runCommand(command)
 Creates and executes a new process with the specified command.
 ```ring
 proc.runCommand("cmd.exe /c echo Hello World")
+```
+
+#### runCommandAsync(command)
+Runs a command asynchronously.
+```ring
+proc.runCommandAsync("command")
 ```
 
 #### waitForComplete()
@@ -55,6 +93,36 @@ proc.waitForComplete()
 Returns the captured output from the process.
 ```ring
 output = proc.readOutput()
+```
+
+#### readOutputAsync()
+Reads output line by line asynchronously.
+```ring
+output = proc.readOutputAsync()
+```
+
+#### setStdin(data)
+Sends input to the process.
+```ring
+proc.setStdin("input data")
+```
+
+#### getStderr()
+Gets error output from the process.
+```ring
+error = proc.getStderr()
+```
+
+#### getExitCode()
+Gets the process exit code.
+```ring
+exitCode = proc.getExitCode()
+```
+
+#### getPid()
+Gets the process ID.
+```ring
+pid = proc.getPid()
 ```
 
 #### kill()
@@ -70,6 +138,7 @@ if proc.isActive()
     ? "Process is still running"
 ok
 ```
+
 
 ## Implementation Details
 
