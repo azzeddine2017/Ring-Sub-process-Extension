@@ -26,6 +26,7 @@ RING_API void ring_vm_subprocess_init(void *pPointer)
     }
     pSubProcess->hProcess = NULL;
     pSubProcess->pipeHandle = NULL;
+    pSubProcess->stdinHandle = NULL;
     pSubProcess->output = NULL;
     pSubProcess->processId = 0;
     RING_API_RETCPOINTER(pSubProcess, "SubProcess");
@@ -48,13 +49,24 @@ RING_API void ring_vm_subprocess_create(void *pPointer)
     SECURITY_ATTRIBUTES saAttr;
     HANDLE hReadPipe = NULL;
     HANDLE hWritePipe = NULL;
+    HANDLE hStdinRead = NULL;
+    HANDLE hStdinWrite = NULL;
     
     saAttr.nLength = sizeof(SECURITY_ATTRIBUTES);
     saAttr.bInheritHandle = TRUE;
     saAttr.lpSecurityDescriptor = NULL;
 
+    // إنشاء أنبوب للقراءة (stdout)
     if (!CreatePipe(&hReadPipe, &hWritePipe, &saAttr, 0)) {
-        RING_API_ERROR("Failed to create pipe");
+        RING_API_ERROR("Failed to create stdout pipe");
+        return;
+    }
+
+    // إنشاء أنبوب للكتابة (stdin)
+    if (!CreatePipe(&hStdinRead, &hStdinWrite, &saAttr, 0)) {
+        CloseHandle(hReadPipe);
+        CloseHandle(hWritePipe);
+        RING_API_ERROR("Failed to create stdin pipe");
         return;
     }
 
@@ -65,6 +77,7 @@ RING_API void ring_vm_subprocess_create(void *pPointer)
     si.cb = sizeof(si);
     si.hStdError = hWritePipe;
     si.hStdOutput = hWritePipe;
+    si.hStdInput = hStdinRead;  // تعيين stdin
     si.dwFlags |= STARTF_USESTDHANDLES;
     
     ZeroMemory(&pi, sizeof(pi));
@@ -72,6 +85,8 @@ RING_API void ring_vm_subprocess_create(void *pPointer)
     if (!CreateProcess(NULL, (LPSTR)command, NULL, NULL, TRUE, 0, NULL, NULL, &si, &pi)) {
         CloseHandle(hReadPipe);
         CloseHandle(hWritePipe);
+        CloseHandle(hStdinRead);
+        CloseHandle(hStdinWrite);
         RING_API_ERROR("Failed to create process");
         return;
     }
@@ -79,9 +94,11 @@ RING_API void ring_vm_subprocess_create(void *pPointer)
     pSubProcess->hProcess = pi.hProcess;
     pSubProcess->processId = pi.dwProcessId;
     pSubProcess->pipeHandle = _fdopen(_open_osfhandle((intptr_t)hReadPipe, _O_RDONLY), "r");
+    pSubProcess->stdinHandle = _fdopen(_open_osfhandle((intptr_t)hStdinWrite, _O_WRONLY), "w");
     
     CloseHandle(pi.hThread);
     CloseHandle(hWritePipe);
+    CloseHandle(hStdinRead);
 
     RING_API_RETNUMBER(1);
 }
@@ -103,13 +120,24 @@ RING_API void ring_vm_subprocess_execute(void *pPointer)
     SECURITY_ATTRIBUTES saAttr;
     HANDLE hReadPipe = NULL;
     HANDLE hWritePipe = NULL;
+    HANDLE hStdinRead = NULL;
+    HANDLE hStdinWrite = NULL;
     
     saAttr.nLength = sizeof(SECURITY_ATTRIBUTES);
     saAttr.bInheritHandle = TRUE;
     saAttr.lpSecurityDescriptor = NULL;
 
+    // إنشاء أنبوب للقراءة (stdout)
     if (!CreatePipe(&hReadPipe, &hWritePipe, &saAttr, 0)) {
-        RING_API_ERROR("Failed to create pipe");
+        RING_API_ERROR("Failed to create stdout pipe");
+        return;
+    }
+
+    // إنشاء أنبوب للكتابة (stdin)
+    if (!CreatePipe(&hStdinRead, &hStdinWrite, &saAttr, 0)) {
+        CloseHandle(hReadPipe);
+        CloseHandle(hWritePipe);
+        RING_API_ERROR("Failed to create stdin pipe");
         return;
     }
 
@@ -120,6 +148,7 @@ RING_API void ring_vm_subprocess_execute(void *pPointer)
     si.cb = sizeof(si);
     si.hStdError = hWritePipe;
     si.hStdOutput = hWritePipe;
+    si.hStdInput = hStdinRead;  // تعيين stdin
     si.dwFlags |= STARTF_USESTDHANDLES;
     
     ZeroMemory(&pi, sizeof(pi));
@@ -127,6 +156,8 @@ RING_API void ring_vm_subprocess_execute(void *pPointer)
     if (!CreateProcess(NULL, (LPSTR)command, NULL, NULL, TRUE, CREATE_NO_WINDOW, NULL, NULL, &si, &pi)) {
         CloseHandle(hReadPipe);
         CloseHandle(hWritePipe);
+        CloseHandle(hStdinRead);
+        CloseHandle(hStdinWrite);
         RING_API_ERROR("Failed to execute process");
         return;
     }
@@ -134,9 +165,11 @@ RING_API void ring_vm_subprocess_execute(void *pPointer)
     pSubProcess->hProcess = pi.hProcess;
     pSubProcess->processId = pi.dwProcessId;
     pSubProcess->pipeHandle = _fdopen(_open_osfhandle((intptr_t)hReadPipe, _O_RDONLY), "r");
+    pSubProcess->stdinHandle = _fdopen(_open_osfhandle((intptr_t)hStdinWrite, _O_WRONLY), "w");
     
     CloseHandle(pi.hThread);
     CloseHandle(hWritePipe);
+    CloseHandle(hStdinRead);
 
     RING_API_RETNUMBER(1);
 }
@@ -207,6 +240,9 @@ RING_API void ring_vm_subprocess_terminate(void *pPointer)
     if (pSubProcess->pipeHandle != NULL) {
         _pclose(pSubProcess->pipeHandle);
     }
+    if (pSubProcess->stdinHandle != NULL) {
+        _pclose(pSubProcess->stdinHandle);
+    }
     if (pSubProcess->output != NULL) {
         ring_string_delete(pSubProcess->output);
     }
@@ -228,9 +264,9 @@ RING_API void ring_vm_subprocess_setstdin(void *pPointer)
     SubProcess *pSubProcess = (SubProcess *)RING_API_GETCPOINTER(1, "SubProcess");
     const char *input = RING_API_GETSTRING(2);
 
-    if (pSubProcess->pipeHandle != NULL) {
-        fputs(input, pSubProcess->pipeHandle);
-        fflush(pSubProcess->pipeHandle);
+    if (pSubProcess->stdinHandle != NULL) {
+        fputs(input, pSubProcess->stdinHandle);
+        fflush(pSubProcess->stdinHandle);
         RING_API_RETNUMBER(1);
     }
     RING_API_RETNUMBER(0);
