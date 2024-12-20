@@ -6,7 +6,8 @@
 
 // هياكل البيانات
 typedef struct SubProcess {
-    FILE *pipeHandle;
+    FILE *pipeHandle;      // للقراءة من stdout
+    FILE *stdinHandle;     // للكتابة إلى stdin
     HANDLE hProcess;
     DWORD processId;
     String *output;
